@@ -1,0 +1,60 @@
+METIS API wrapper for Ruby
+
+* Author
+ - Masahiro TANAKA
+
+* Requirement
+ - METIS ver 5.0pre2
+ - tested with Ruby 1.9.1 and gcc 4.5.1
+
+* Install
+
+  $ ruby setup.rb config
+  $ ruby setup.rb setup
+  # ruby setup.rb install
+
+ Note: The first step above includes steps to download and compile
+       METIS sources.  If you want do it manually, execute the
+       following commands.
+
+  $ wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.0pre2.tar.gz
+  $ tar xvzf metis-5.0pre2.tar.gz
+  $ patch -p0 < patch-metis-5.0pre2
+  $ cd metis-5.0pre2
+  $ make all usegdb=1 usefpic=1
+
+
+* Call sequence
+
+ - METIS.part_graph( xadj, adjncy, [vertex_wgt|nil],
+   		     [adj_wgt|nil], [n_part|part_wgt] )
+
+Partition a Graph into n-parts to minimize the edgecut.
+If the last argument is a Numeric, the graph is partitioned into
+equal-sized parts.
+If the last argument is an Array, the graph is partitioned into
+weighted parts.
+If n_part <= 8, it uses the multilevel recursive bisection method.
+If n_part >  8, it uses the multilevel k-way partitioning algorithm.
+See METIS manual for the graph data structure.
+
+ - METIS.part_graph_recursive( xadj, adjncy, [vertex_wgt|nil],
+   			       [adj_wgt|nil], [n_part|part_wgt] )
+
+Same as the first method except it always uses the multilevel
+recursive bisection method.
+
+ - METIS.part_graph_kway( xadj, adjncy, [vertex_wgt|nil],
+   			  [adj_wgt|nil], [n_part|part_wgt] )
+
+Same as the first method except it always uses the multilevel k-way
+partitioning algorithm.
+
+
+* METIS
+ This package includes METIS ver.5.0pre2.
+
+Reference:
+"A Fast and Highly Quality Multilevel Scheme for Partitioning Irregular Graphs".
+George Karypis and Vipin Kumar. SIAM Journal on Scientific Computing,
+Vol. 20, No. 1, pp. 359¡½392, 1999.

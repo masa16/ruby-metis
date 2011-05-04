@@ -1,0 +1,11 @@
+.config
+*~
+*/*~
+*/*/*~
+ext/Makefile
+ext/*.o
+ext/*.so
+ext/*.log
+pkg
+metis-5.0pre2/build
+metis-5.0pre2/GKlib/builds

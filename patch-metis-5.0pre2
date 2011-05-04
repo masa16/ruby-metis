@@ -1,0 +1,53 @@
+diff -wur metis-5.0pre2.orig/GKlib/trunk/Makefile metis-5.0pre2/GKlib/trunk/Makefile
+--- metis-5.0pre2.orig/GKlib/trunk/Makefile	2007-03-28 06:34:29.000000000 +0900
++++ metis-5.0pre2/GKlib/trunk/Makefile	2011-05-02 19:38:58.282869459 +0900
+@@ -166,6 +166,9 @@
+ endif
+ #**************************************************************************
+
++ifdef usefpic
++  OPTFLAGS += -fPIC
++endif
+
+
+ #**************************************************************************
+diff -wur metis-5.0pre2.orig/GKlib/trunk/pdb.c metis-5.0pre2/GKlib/trunk/pdb.c
+--- metis-5.0pre2.orig/GKlib/trunk/pdb.c	2007-04-05 11:52:46.000000000 +0900
++++ metis-5.0pre2/GKlib/trunk/pdb.c	2011-05-04 16:43:46.755391176 +0900
+@@ -10,9 +10,9 @@
+ \version $Id: pdb.c 1414 2007-04-05 02:52:46Z karypis $
+ */
+ /************************************************************************/
++#include <GKlib.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+-#include <GKlib.h>
+ #include <string.h>
+
+ /************************************************************************/
+diff -wur metis-5.0pre2.orig/Makefile.in metis-5.0pre2/Makefile.in
+--- metis-5.0pre2.orig/Makefile.in	2007-04-08 13:01:04.000000000 +0900
++++ metis-5.0pre2/Makefile.in	2011-05-04 16:43:31.100356472 +0900
+@@ -146,6 +146,9 @@
+ endif
+
+
++ifdef usefpic
++  OPTFLAGS += -fPIC
++endif
+
+ #**************************************************************************
+ # Setup the project-specific parameters of the build. This part of the
+diff -wur metis-5.0pre2.orig/test/mtest.c metis-5.0pre2/test/mtest.c
+--- metis-5.0pre2.orig/test/mtest.c	2007-04-08 02:59:41.000000000 +0900
++++ metis-5.0pre2/test/mtest.c	2011-05-04 16:43:02.542469756 +0900
+@@ -13,8 +13,8 @@
+  *
+  */
+
+-#include <metis.h>
+ #include <metislib.h>
++#include <metis.h>
+ #include "../libmetis/proto.h"
+ #include "proto.h"
+
