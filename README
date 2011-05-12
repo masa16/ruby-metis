@@ -28,7 +28,7 @@ METIS API wrapper for Ruby
 
 * Call sequence
 
- - METIS.part_graph( xadj, adjncy, [vertex_wgt|nil],
+ - Metis.part_graph( xadj, adjncy, [vertex_wgt|nil],
    		     [adj_wgt|nil], [n_part|part_wgt] )
 
     Partition a Graph into n-parts to minimize the edgecut.
@@ -40,23 +40,22 @@ METIS API wrapper for Ruby
     If n_part >  8, it uses the multilevel k-way partitioning algorithm.
     See METIS manual for the graph data structure.
 
- - METIS.part_graph_recursive( xadj, adjncy, [vertex_wgt|nil],
+ - Metis.part_graph_recursive( xadj, adjncy, [vertex_wgt|nil],
    			       [adj_wgt|nil], [n_part|part_wgt] )
 
     Same as the first method except it always uses the multilevel
     recursive bisection method.
 
- - METIS.part_graph_kway( xadj, adjncy, [vertex_wgt|nil],
+ - Metis.part_graph_kway( xadj, adjncy, [vertex_wgt|nil],
    			  [adj_wgt|nil], [n_part|part_wgt] )
 
     Same as the first method except it always uses the multilevel k-way
     partitioning algorithm.
 
 
-* METIS
- This package includes METIS ver.5.0pre2.
-
-Reference:
+* METIS Reference:
     "A Fast and Highly Quality Multilevel Scheme for Partitioning Irregular Graphs".
     George Karypis and Vipin Kumar. SIAM Journal on Scientific Computing,
     Vol. 20, No. 1, pp. 359--392, 1999.
+
+    http://www.cs.umn.edu/~metis
