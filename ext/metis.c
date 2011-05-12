@@ -155,8 +155,8 @@ metis_part_graph_main(VALUE v_xadj,
 
     // check array sizes
     if (!NIL_P(v_vwgt)) {
-	if (RARRAY_LEN(v_vwgt) != n_vertex) {
-	    rb_raise(rb_eArgError,"xadj.length(=%"IDXFMT"d) != vwgt.length(=%ld)",
+	if (RARRAY_LEN(v_vwgt)+1 != n_vertex) {
+	    rb_raise(rb_eArgError,"xadj.length(=%"IDXFMT"d) != vwgt.length(=%ld)+1",
 		     n_vertex, RARRAY_LEN(v_vwgt) );
 	}
 	wgtflag = 2;
@@ -177,7 +177,9 @@ metis_part_graph_main(VALUE v_xadj,
 
     // allocate array
     get_idxary(g->xadj,v_xadj,n_vertex);
+    n_vertex -= 1;
     get_idxary(g->adjncy,v_adjncy,n_edges2);
+
     if (wgtflag & 2) {
 	get_idxary(g->vwgt,v_vwgt,n_vertex);
     }
@@ -186,9 +188,7 @@ metis_part_graph_main(VALUE v_xadj,
     }
 
     // result array
-    g->part = ALLOC_N(idxtype,n_vertex-1);
-
-    n_vertex -= 1;
+    g->part = ALLOC_N(idxtype,n_vertex);
 
     // partition weight
     if (TYPE(v_tpwgts) == T_ARRAY) {
