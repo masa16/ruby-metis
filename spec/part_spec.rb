@@ -1,5 +1,5 @@
 require "rspec"
-require "metis"
+require File.dirname(File.expand_path(__FILE__))+"/../ext/metis"
 
 module RSpec
   module Matchers

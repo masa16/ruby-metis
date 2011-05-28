@@ -7,7 +7,7 @@ METIS API wrapper for Ruby
 * Requirement
 
  - METIS ver 5.0pre2
- - tested with Ruby 1.9.1 and gcc 4.5.1
+ - tested with Ruby 1.9.2 and gcc 4.5.1
 
 * Install
 
@@ -43,14 +43,40 @@ METIS API wrapper for Ruby
  - Metis.part_graph_recursive( xadj, adjncy, [vertex_wgt|nil],
    			       [adj_wgt|nil], [n_part|part_wgt] )
 
-    Same as the first method except it always uses the multilevel
+    Same as the part_graph method except it always uses the multilevel
     recursive bisection method.
 
  - Metis.part_graph_kway( xadj, adjncy, [vertex_wgt|nil],
    			  [adj_wgt|nil], [n_part|part_wgt] )
 
-    Same as the first method except it always uses the multilevel k-way
+    Same as the part_graph method except it always uses the multilevel k-way
     partitioning algorithm.
+
+
+ - Metis.mc_part_graph( ncon, xadj, adjncy, [vertex_wgt|nil],
+   		        [adj_wgt|nil], [ubvec|nil], [n_part|part_wgt] )
+
+    Multi-Constraint Partitioning a Graph into n-parts to minimize the
+    edgecut.
+    If the last argument is a Numeric, the graph is partitioned into
+    equal-sized parts.
+    If the last argument is an Array, the graph is partitioned into
+    weighted parts.
+    If n_part <= 8, it uses the multilevel recursive bisection method.
+    If n_part >  8, it uses the multilevel k-way partitioning algorithm.
+    See METIS manual for the graph data structure.
+
+ - Metis.mc_part_graph_recursive( ncon, xadj, adjncy, [vertex_wgt|nil],
+   		        [adj_wgt|nil], [n_part|part_wgt] )
+
+    Same as the mc_part_graph method except it always uses the
+    multilevel recursive bisection method.
+
+ - Metis.mc_part_graph_kway( ncon, xadj, adjncy, [vertex_wgt|nil],
+   		        [adj_wgt|nil], [ubvec|nil], [n_part|part_wgt] )
+
+    Same as the mc_part_graph method except it always uses the
+    multilevel k-way partitioning algorithm.
 
 
 * METIS Reference:

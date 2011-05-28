@@ -7,5 +7,6 @@ ext/*.o
 ext/*.so
 ext/*.log
 pkg
-metis-5.0pre2/build
-metis-5.0pre2/GKlib/builds
+InstalledFiles
+metis-5.0pre2.tar.gz
+metis-5.0pre2
