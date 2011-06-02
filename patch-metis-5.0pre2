@@ -1,19 +1,20 @@
+metis-5.0pre2/GKlibだけに発見: builds
 diff -wur metis-5.0pre2.orig/GKlib/trunk/Makefile metis-5.0pre2/GKlib/trunk/Makefile
 --- metis-5.0pre2.orig/GKlib/trunk/Makefile	2007-03-28 06:34:29.000000000 +0900
-+++ metis-5.0pre2/GKlib/trunk/Makefile	2011-05-02 19:38:58.282869459 +0900
++++ metis-5.0pre2/GKlib/trunk/Makefile	2011-05-06 19:29:09.299783635 +0900
 @@ -166,6 +166,9 @@
  endif
  #**************************************************************************
-
+ 
 +ifdef usefpic
 +  OPTFLAGS += -fPIC
 +endif
-
-
+ 
+ 
  #**************************************************************************
 diff -wur metis-5.0pre2.orig/GKlib/trunk/pdb.c metis-5.0pre2/GKlib/trunk/pdb.c
 --- metis-5.0pre2.orig/GKlib/trunk/pdb.c	2007-04-05 11:52:46.000000000 +0900
-+++ metis-5.0pre2/GKlib/trunk/pdb.c	2011-05-04 16:43:46.755391176 +0900
++++ metis-5.0pre2/GKlib/trunk/pdb.c	2011-05-06 19:29:09.299783635 +0900
 @@ -10,9 +10,9 @@
  \version $Id: pdb.c 1414 2007-04-05 02:52:46Z karypis $
  */
@@ -23,31 +24,181 @@ diff -wur metis-5.0pre2.orig/GKlib/trunk/pdb.c metis-5.0pre2/GKlib/trunk/pdb.c
  #include <stdlib.h>
 -#include <GKlib.h>
  #include <string.h>
-
+ 
  /************************************************************************/
 diff -wur metis-5.0pre2.orig/Makefile.in metis-5.0pre2/Makefile.in
 --- metis-5.0pre2.orig/Makefile.in	2007-04-08 13:01:04.000000000 +0900
-+++ metis-5.0pre2/Makefile.in	2011-05-04 16:43:31.100356472 +0900
++++ metis-5.0pre2/Makefile.in	2011-05-06 19:29:09.300783550 +0900
 @@ -146,6 +146,9 @@
  endif
-
-
+ 
+ 
 +ifdef usefpic
 +  OPTFLAGS += -fPIC
 +endif
-
+ 
  #**************************************************************************
  # Setup the project-specific parameters of the build. This part of the
+metis-5.0pre2/buildだけに発見: Linux-x86_64
+diff -wur metis-5.0pre2.orig/include/metis.h metis-5.0pre2/include/metis.h
+--- metis-5.0pre2.orig/include/metis.h	2007-04-08 02:59:41.000000000 +0900
++++ metis-5.0pre2/include/metis.h	2011-06-02 17:45:52.662206941 +0900
+@@ -208,6 +208,10 @@
+                    idxtype *adjwgt, idxtype *wgtflag, idxtype *numflag, idxtype *nparts, float *tpwgts, 
+                    idxtype *options, idxtype *edgecut, idxtype *part);
+ 
++void __cdecl METIS_mCPartGraphRecursive2(idxtype *nvtxs, idxtype *ncon, idxtype *xadj, idxtype *adjncy,
++                   idxtype *vwgt, idxtype *adjwgt, idxtype *wgtflag, idxtype *numflag, idxtype *nparts,
++                   float *tpwgts, idxtype *options, idxtype *edgecut, idxtype *part);
++
+ void __cdecl METIS_NodeNDP(idxtype nvtxs, idxtype *xadj, idxtype *adjncy, idxtype npes, idxtype *options, 
+                    idxtype *perm, idxtype *iperm, idxtype *sizes);
+ 
+diff -wur metis-5.0pre2.orig/libmetis/parmetis.c metis-5.0pre2/libmetis/parmetis.c
+--- metis-5.0pre2.orig/libmetis/parmetis.c	2007-04-08 13:01:04.000000000 +0900
++++ metis-5.0pre2/libmetis/parmetis.c	2011-06-02 18:05:49.778006236 +0900
+@@ -366,3 +366,120 @@
+ 
+   FreeWorkSpace(&ctrl, &graph);
+ }
++
++
++
++/*************************************************************************
++* This function is the entry point for PWMETIS that accepts exact weights
++* for the target partitions
++**************************************************************************/
++void METIS_mCPartGraphRecursive2(idxtype *nvtxs, idxtype *ncon, idxtype *xadj, idxtype *adjncy,
++       idxtype *vwgt, idxtype *adjwgt, idxtype *wgtflag, idxtype *numflag, idxtype *nparts,
++       float *tpwgts, idxtype *options, idxtype *edgecut, idxtype *part)
++{
++  idxtype i, j;
++  GraphType graph;
++  CtrlType ctrl;
++  float *mytpwgts;
++  float avgwgt;
++
++  if (*numflag == 1)
++    Change2CNumbering(*nvtxs, xadj, adjncy);
++
++  SetUpGraph(&graph, OP_PMETIS, *nvtxs, *ncon, xadj, adjncy, vwgt, adjwgt, *wgtflag);
++  graph.npwgts = NULL;
++  mytpwgts = gk_fmalloc(*nparts, "mytpwgts");
++  gk_fcopy(*nparts, tpwgts, mytpwgts);
++
++  if (options[0] == 0) {  /* Use the default parameters */
++    ctrl.CType  = McPMETIS_CTYPE;
++    ctrl.IType  = McPMETIS_ITYPE;
++    ctrl.RType  = McPMETIS_RTYPE;
++    ctrl.dbglvl = McPMETIS_DBGLVL;
++  }
++  else {
++    ctrl.CType  = options[OPTION_CTYPE];
++    ctrl.IType  = options[OPTION_ITYPE];
++    ctrl.RType  = options[OPTION_RTYPE];
++    ctrl.dbglvl = options[OPTION_DBGLVL];
++  }
++  ctrl.optype = OP_PMETIS;
++  ctrl.CoarsenTo = 100;
++
++  ctrl.nmaxvwgt = 1.5/(1.0*ctrl.CoarsenTo);
++
++  //InitRandom(options[7]);
++  InitRandom(-1);
++
++  AllocateWorkSpace(&ctrl, &graph, *nparts);
++
++  IFSET(ctrl.dbglvl, DBG_TIME, InitTimers(&ctrl));
++  IFSET(ctrl.dbglvl, DBG_TIME, gk_startcputimer(ctrl.TotalTmr));
++
++  ASSERT(CheckGraph(&graph));
++  *edgecut = MCMlevelRecursiveBisection2(&ctrl, &graph, *nparts, mytpwgts, part, 1.000, 0);
++
++  IFSET(ctrl.dbglvl, DBG_TIME, gk_stopcputimer(ctrl.TotalTmr));
++  IFSET(ctrl.dbglvl, DBG_TIME, PrintTimers(&ctrl));
++
++  FreeWorkSpace(&ctrl, &graph);
++  gk_free((void **)&mytpwgts, LTERM);
++
++  if (*numflag == 1)
++    Change2FNumbering(*nvtxs, xadj, adjncy, part);
++}
++
++
++/*************************************************************************
++* This function takes a graph and produces a bisection of it
++**************************************************************************/
++int MCMlevelRecursiveBisection2(CtrlType *ctrl, GraphType *graph, idxtype nparts,
++    float *tpwgts, idxtype *part, float ubfactor, int fpart)
++{
++  idxtype i, nvtxs, cut;
++  float wsum, tpwgts2[2];
++  idxtype *label, *where;
++  GraphType lgraph, rgraph;
++
++  nvtxs = graph->nvtxs;
++  if (nvtxs == 0)
++    return 0;
++
++  /* Determine the weights of the partitions */
++  tpwgts2[0] = gk_fsum(nparts/2, tpwgts, 1);
++  tpwgts2[1] = 1.0-tpwgts2[0];
++
++  MCMlevelEdgeBisection(ctrl, graph, tpwgts2, ubfactor);
++  cut = graph->mincut;
++
++  label = graph->label;
++  where = graph->where;
++  for (i=0; i<nvtxs; i++)
++    part[label[i]] = where[i] + fpart;
++
++  if (nparts > 2)
++    SplitGraphPart(ctrl, graph, &lgraph, &rgraph);
++
++  /* Free the memory of the top level graph */
++  FreeGraph(graph, 0);
++  //gk_free((void **)&graph->gdata, &graph->nvwgt, &graph->rdata, &graph->label, &graph->npwgts, LTERM);
++
++  /* Scale the fractions in the tpwgts according to the true weight */
++  wsum = gk_fsum(nparts/2, tpwgts, 1);
++  gk_fscale(nparts/2, 1.0/wsum, tpwgts, 1);
++  gk_fscale(nparts-nparts/2, 1.0/(1.0-wsum), tpwgts+nparts/2, 1);
++
++  /* Do the recursive call */
++  if (nparts > 3) {
++    cut += MCMlevelRecursiveBisection2(ctrl, &lgraph, nparts/2, tpwgts, part, ubfactor, fpart);
++    cut += MCMlevelRecursiveBisection2(ctrl, &rgraph, nparts-nparts/2, tpwgts+nparts/2, part, ubfactor, fpart+nparts/2);
++  }
++  else if (nparts == 3) {
++    cut += MCMlevelRecursiveBisection2(ctrl, &rgraph, nparts-nparts/2, tpwgts+nparts/2, part, ubfactor, fpart+nparts/2);
++    FreeGraph(&lgraph, 0);
++    //gk_free((void **)&lgraph.gdata, &lgraph.nvwgt, &lgraph.label, LTERM);
++  }
++
++  return cut;
++
++}
+diff -wur metis-5.0pre2.orig/libmetis/proto.h metis-5.0pre2/libmetis/proto.h
+--- metis-5.0pre2.orig/libmetis/proto.h	2007-04-08 13:01:04.000000000 +0900
++++ metis-5.0pre2/libmetis/proto.h	2011-06-02 17:43:29.960412868 +0900
+@@ -343,6 +343,7 @@
+ 
+ /* parmetis.c */
+ void MlevelNestedDissectionP(CtrlType *, GraphType *, idxtype *, idxtype, idxtype, idxtype, idxtype *);
++int MCMlevelRecursiveBisection2(CtrlType *, GraphType *, idxtype, float *, idxtype *, float , int);
+ 
+ /* pmetis.c */
+ idxtype MlevelRecursiveBisection(CtrlType *, GraphType *, idxtype, idxtype *, float *, float, idxtype);
 diff -wur metis-5.0pre2.orig/test/mtest.c metis-5.0pre2/test/mtest.c
 --- metis-5.0pre2.orig/test/mtest.c	2007-04-08 02:59:41.000000000 +0900
-+++ metis-5.0pre2/test/mtest.c	2011-05-04 16:43:02.542469756 +0900
++++ metis-5.0pre2/test/mtest.c	2011-05-06 19:29:09.301783464 +0900
 @@ -13,8 +13,8 @@
   *
   */
-
+ 
 -#include <metis.h>
  #include <metislib.h>
 +#include <metis.h>
  #include "../libmetis/proto.h"
  #include "proto.h"
-
+ 

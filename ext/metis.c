@@ -563,6 +563,127 @@ metis_mc_part_graph_kway(VALUE m, VALUE a1, VALUE a2, VALUE a3, VALUE a4, VALUE 
 }
 
 
+
+/* ------------------ METIS_mCPartGraphRecursive2 -------------------
+void __cdecl METIS_mCPartGraphRecursive2(
+ idxtype *nvtxs, idxtype *ncon, idxtype *xadj, idxtype *adjncy,
+ idxtype *vwgt, idxtype *adjwgt, idxtype *wgtflag, idxtype *numflag, idxtype *nparts,
+ float *tpwgts, idxtype *options, idxtype *edgecut, idxtype *part);
+*/
+
+static VALUE
+metis_mc_part_graph_recursive2(VALUE v_ncon,
+			       VALUE v_xadj,
+			       VALUE v_adjncy,
+			       VALUE v_vwgt,
+			       VALUE v_adjwgt,
+			       VALUE v_tpwgts)
+{
+    idxtype i;
+    idxtype ncon;
+    idxtype n_vertex;
+    idxtype n_edges2;
+    idxtype n_parts;
+
+    idxtype wgtflag = 0;
+    idxtype numflag = 0;
+
+    idxtype options[10] = {0,0,0,0,0,0,0,0,0,0};
+    idxtype edgecut = 0;
+
+    struct GraphData *g;
+    volatile VALUE v;
+    volatile VALUE v_part;
+
+    char err_str[10] = "";
+    int err_str_len = 0;
+
+    // check argument type
+    check_array(v_xadj,   "1");
+    check_array(v_adjncy, "2");
+    check_array(v_vwgt,   "3");
+    check_array2(v_adjwgt,"4");
+
+    if (err_str_len > 0) {
+	err_str[err_str_len] = '\0';
+	rb_raise(rb_eArgError,"[%s]-th arguments are not an Array",err_str);
+    }
+
+    n_vertex = RARRAY_LEN(v_xadj);
+    n_edges2 = RARRAY_LEN(v_adjncy);
+
+    ncon = NUM2IDXTYPE(v_ncon);
+    if (ncon < 2 || ncon >= 15) {
+	rb_raise(rb_eArgError,"ncon(=%"IDXFMT"d) must be 1 < ncon < 15",ncon);
+    }
+
+    if (!NIL_P(v_adjwgt)) {
+	if (RARRAY_LEN(v_adjwgt) != n_edges2) {
+	    rb_raise(rb_eArgError,"adjncy.length(=%"IDXFMT"d) != adjwgt.length(=%ld)",
+		     n_edges2, RARRAY_LEN(v_adjwgt) );
+	}
+	wgtflag = 1;
+    }
+
+    // wrap as a Ruby-object to be GC-ed automatically
+    g = ALLOC(struct GraphData);
+    MEMZERO(g,struct GraphData,1);
+    v = Data_Wrap_Struct(rb_cData,0,g_free,g);
+
+    // allocate array
+    get_idxary(g->xadj,v_xadj,n_vertex);
+    n_vertex -= 1;
+    get_idxary(g->adjncy,v_adjncy,n_edges2);
+
+    // vertex weight for multi-constraint
+    g->vwgt = ALLOC_N(idxtype, n_vertex * ncon);
+    get_mc_vwgt(g->vwgt, v_vwgt, n_vertex, ncon);
+
+    // edge weight
+    if (wgtflag==1) {
+	get_idxary(g->adjwgt,v_adjwgt,n_edges2);
+    }
+
+    // result array
+    g->part = ALLOC_N(idxtype,n_vertex);
+
+    // partition weight
+    if (TYPE(v_tpwgts) == T_ARRAY) {
+	n_parts = RARRAY_LEN(v_tpwgts);
+	g->tpwgts = ALLOC_N(float,n_parts);
+	get_partwgt(g->tpwgts,v_tpwgts,n_parts);
+    } else if (rb_obj_is_kind_of(v_tpwgts, rb_cNumeric)) {
+	n_parts = NUM2IDXTYPE(v_tpwgts);
+	g->tpwgts = ALLOC_N(float,n_parts);
+	for (i=0; i<n_parts; i++) {
+	    g->tpwgts[i] = 1.0/n_parts;
+	}
+    } else {
+	rb_raise(rb_eArgError,"nparts must be Array (tpwgts) or Numeric (nparts)");
+    }
+
+    //
+    METIS_mCPartGraphRecursive2( &n_vertex, &ncon,
+				 g->xadj, g->adjncy, g->vwgt, g->adjwgt,
+				 &wgtflag, &numflag,
+				 &n_parts, g->tpwgts,
+				 options,
+				 &edgecut, g->part );
+
+    // convert array
+    v_part = rb_ary_new2(n_vertex);
+    for (i=0; i<n_vertex; i++) {
+	rb_ary_push( v_part, IDXTYPE2NUM(g->part[i]) );
+    }
+
+    if (edgecut==0) {
+	rb_warning("edgecut==0");
+    }
+
+    return v_part;
+}
+
+
 /* ------------------ Initialize ------------------- */
 
 void
@@ -578,4 +699,6 @@ Init_metis()
     rb_define_module_function(rb_mMetis, "mc_part_graph", metis_mc_part_graph, 7);
     rb_define_module_function(rb_mMetis, "mc_part_graph_recursive", metis_mc_part_graph_recursive, 6);
     rb_define_module_function(rb_mMetis, "mc_part_graph_kway", metis_mc_part_graph_kway, 7);
+
+    rb_define_module_function(rb_mMetis, "mc_part_graph_recursive2", metis_mc_part_graph_recursive2, 6);
 }
