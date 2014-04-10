@@ -12,6 +12,10 @@
 #include <ruby.h>
 #include "metis.h"
 
+#ifdef IDXTYPE_INT
+#define IDXTYPEWIDTH 32
+#endif
+
 #if IDXTYPEWIDTH==32
 
 #if   SIZEOF_LONG==4
@@ -67,6 +71,49 @@ g_free(struct GraphData *g)
     if (g->ubvec) xfree(g->ubvec);
     if (g->part) xfree(g->part);
     xfree(g);
+}
+
+static void
+g_debug_print(struct GraphData *g, idxtype n, idxtype ncon)
+{
+    idxtype i, j, nadj, nall;
+
+    if (g->xadj) {
+	printf("xadj=[");
+	for (i=0; i<=n; i++) {
+	    printf("%"IDXFMT"d,",g->xadj[i]);
+	}
+	printf("]\n");
+    }
+
+    if (g->adjncy) {
+	nadj = g->xadj[n];
+	printf("adjncy=[");
+	for (i=0,j=1; i<nadj; i++) {
+	    printf("%"IDXFMT"d,",g->adjncy[i]);
+	    if (g->xadj[j]-1==i) {printf(" "); j++;}
+	}
+	printf("]\n");
+    }
+
+    if (g->vwgt) {
+	nall = n*ncon;
+	printf("vwgt=[");
+	for (i=0; i<n; i++) {
+	    for (j=0; j<ncon; j++) {
+		printf("%"IDXFMT"d,",g->vwgt[i*ncon+j]);
+	    }
+	    printf(" ");
+	}
+	printf("]\n");
+    }
+    /*
+    if (g->adjwgt) xfree(g->adjwgt);
+    if (g->tpwgts) xfree(g->tpwgts);
+    if (g->ubvec) xfree(g->ubvec);
+    if (g->part) xfree(g->part);
+    xfree(g);
+    */
 }
 
 
@@ -395,7 +442,7 @@ metis_mc_part_graph_main(VALUE v_ncon,
     idxtype wgtflag = 0;
     idxtype numflag = 0;
 
-    idxtype options[5] = {0,0,0,0,0};
+    idxtype options[10] = {0,0,0,0,0,0,0,0,0,0};
     idxtype edgecut = 0;
 
     struct GraphData *g;
@@ -469,6 +516,7 @@ metis_mc_part_graph_main(VALUE v_ncon,
 	    flag = 2;
 	}
     }
+    printf("flag=%d\n",flag);
 
     if (flag==1) {
 	METIS_mCPartGraphRecursive
@@ -484,6 +532,8 @@ metis_mc_part_graph_main(VALUE v_ncon,
 	// Each tolerance should be greater than 1.0 (preferably greater than 1.03).
 	g->ubvec = ALLOC_N(float, ncon);
 	get_ubvec(g->ubvec, v_ubvec, ncon);
+
+	//g_debug_print(g,n_vertex,ncon);
 
 	METIS_mCPartGraphKway
 	    ( &n_vertex, &ncon,
@@ -572,7 +622,8 @@ void __cdecl METIS_mCPartGraphRecursive2(
 */
 
 static VALUE
-metis_mc_part_graph_recursive2(VALUE v_ncon,
+metis_mc_part_graph_recursive2(VALUE mod,
+			       VALUE v_ncon,
 			       VALUE v_xadj,
 			       VALUE v_adjncy,
 			       VALUE v_vwgt,
@@ -598,11 +649,16 @@ metis_mc_part_graph_recursive2(VALUE v_ncon,
     char err_str[10] = "";
     int err_str_len = 0;
 
+    ncon = NUM2IDXTYPE(v_ncon);
+    if (ncon < 2 || ncon >= 15) {
+	rb_raise(rb_eArgError,"ncon(=%"IDXFMT"d) must be 1 < ncon < 15",ncon);
+    }
+
     // check argument type
-    check_array(v_xadj,   "1");
-    check_array(v_adjncy, "2");
-    check_array(v_vwgt,   "3");
-    check_array2(v_adjwgt,"4");
+    check_array(v_xadj,   "2");
+    check_array(v_adjncy, "3");
+    check_array(v_vwgt,   "4");
+    check_array2(v_adjwgt,"5");
 
     if (err_str_len > 0) {
 	err_str[err_str_len] = '\0';
@@ -611,11 +667,6 @@ metis_mc_part_graph_recursive2(VALUE v_ncon,
 
     n_vertex = RARRAY_LEN(v_xadj);
     n_edges2 = RARRAY_LEN(v_adjncy);
-
-    ncon = NUM2IDXTYPE(v_ncon);
-    if (ncon < 2 || ncon >= 15) {
-	rb_raise(rb_eArgError,"ncon(=%"IDXFMT"d) must be 1 < ncon < 15",ncon);
-    }
 
     if (!NIL_P(v_adjwgt)) {
 	if (RARRAY_LEN(v_adjwgt) != n_edges2) {
